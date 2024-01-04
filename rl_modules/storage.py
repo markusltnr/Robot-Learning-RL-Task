@@ -51,7 +51,23 @@ class Storage:
     def clear(self):
         self.step = 0
 
+
     def compute_returns(self, last_values):
+        #GAE
+        gae_lambda = 0.9
+        gae = 0
+        for step in reversed(range(self.max_timesteps)):
+            if step == self.max_timesteps - 1:
+                next_values = last_values
+            else:
+                next_values = self.values[step + 1]
+            next_is_not_terminate = 1.0 - self.dones[step]
+            delta = self.rewards[step] + next_is_not_terminate * self.gamma * next_values - self.values[step]
+            gae = delta + gae_lambda * self.gamma * next_is_not_terminate * gae
+            self.advantages[step] = gae
+            self.returns[step] = self.advantages[step] + self.values[step]
+
+    def compute_returns_old(self, last_values):
         for step in reversed(range(self.max_timesteps)):
             if step == self.max_timesteps - 1:
                 next_values = last_values
@@ -70,6 +86,7 @@ class Storage:
         actions = torch.from_numpy(self.actions).to(device).float()
         values = torch.from_numpy(self.values).to(device).float()
         advantages = torch.from_numpy(self.advantages).to(device).float()
+        log_probs = torch.from_numpy(self.actions_log_prob).to(device).float()
 
         for epoch in range(num_epochs):
             for i in range(num_batches):
@@ -82,3 +99,28 @@ class Storage:
                 target_values_batch = values[batch_idx]
                 advantages_batch = advantages[batch_idx]
                 yield (obs_batch, actions_batch, target_values_batch, advantages_batch)
+    
+    def ppo_mini_batch_generator(self, num_batches, num_epochs=8, device="cpu"):
+        batch_size = self.max_timesteps // num_batches
+        indices = np.random.permutation(num_batches * batch_size)
+
+        obs = torch.from_numpy(self.obs).to(device).float()
+        actions = torch.from_numpy(self.actions).to(device).float()
+        values = torch.from_numpy(self.values).to(device).float()
+        advantages = torch.from_numpy(self.advantages).to(device).float()
+        log_probs = torch.from_numpy(self.actions_log_prob).to(device).float()
+        rewards = torch.from_numpy(self.rewards).to(device).float()
+
+        for epoch in range(num_epochs):
+            for i in range(num_batches):
+                start = i * batch_size
+                end = (i + 1) * batch_size
+                batch_idx = indices[start:end]
+
+                obs_batch = obs[batch_idx]
+                actions_batch = actions[batch_idx]
+                target_values_batch = values[batch_idx]
+                advantages_batch = advantages[batch_idx]
+                log_probs_batch = log_probs[batch_idx]
+                rewards_batch = rewards[batch_idx]
+                yield (obs_batch, actions_batch, target_values_batch, advantages_batch, log_probs_batch, rewards_batch)

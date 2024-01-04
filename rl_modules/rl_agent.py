@@ -4,8 +4,8 @@ from rl_modules.storage import Storage
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.utils.tensorboard import SummaryWriter
 from rl_modules.actor_critic import ActorCritic
-
 
 class RLAgent(nn.Module):
     def __init__(self,
@@ -13,11 +13,12 @@ class RLAgent(nn.Module):
                  storage: Storage,
                  actor_critic: ActorCritic,
                  lr=1e-3,
-                 value_loss_coef=1.0,
+                 value_loss_coef=0.5,
                  num_batches=1,
                  num_epochs=1,
                  device='cpu',
-                 action_scale=0.3
+                 action_scale=0.3,
+                 eps_clip=0.2
                  ):
         super().__init__()
         self.env = env
@@ -29,8 +30,10 @@ class RLAgent(nn.Module):
         self.device = device
         self.action_scale = action_scale
         self.transition = Storage.Transition()
+        self.eps_clip = eps_clip
         # create the normalizer
         self.optimizer = optim.Adam(self.actor_critic.parameters(), lr=lr)
+        self.writer = SummaryWriter()
 
     def act(self, obs):
         # Compute the actions and values
@@ -59,6 +62,7 @@ class RLAgent(nn.Module):
     def update(self):
         mean_value_loss = 0
         mean_actor_loss = 0
+        mean_loss = 0
         generator = self.storage.mini_batch_generator(self.num_batches, self.num_epochs, device=self.device)
 
         for obs_batch, actions_batch, target_values_batch, advantages_batch in generator:
@@ -76,10 +80,12 @@ class RLAgent(nn.Module):
 
             mean_value_loss += critic_loss.item()
             mean_actor_loss += actor_loss.item()
+            mean_loss += loss.item()
 
         num_updates = self.num_epochs * self.num_batches
         mean_value_loss /= num_updates
         mean_actor_loss /= num_updates
+        mean_loss /= num_updates
         self.storage.clear()
 
         return mean_value_loss, mean_actor_loss
@@ -113,7 +119,9 @@ class RLAgent(nn.Module):
             infos = self.play(is_training=True)
             # improve policy with collected data
             mean_value_loss, mean_actor_loss = self.update()
-
+            print(f'Iteration {it}: mean value loss = {mean_value_loss}, mean actor loss = {mean_actor_loss}')
+            self.writer.add_scalar('Loss/mean_value_loss', mean_value_loss, it)
+            self.writer.add_scalar('Loss/mean_actor_loss', mean_actor_loss, it)
             if it % num_steps_per_val == 0:
                 infos = self.play(is_training=False)
                 self.save_model(os.path.join(save_dir, f'{it}.pt'))
@@ -125,4 +133,68 @@ class RLAgent(nn.Module):
         self.load_state_dict(torch.load(path))
 
 
+class PPO(RLAgent):
+    def __init__(self,
+                    env: GOEnv,
+                    storage: Storage,
+                    actor_critic: ActorCritic,
+                    lr=1e-3,
+                    value_loss_coef=0.5,
+                    num_batches=1,
+                    num_epochs=1,
+                    device='cpu',
+                    action_scale=0.3
+                    ):
+            super().__init__(env, storage, actor_critic, lr, value_loss_coef, num_batches, num_epochs, device, action_scale)
+            self.env = env
+            self.storage = storage
+            self.actor_critic = actor_critic
+            self.num_batches = num_batches
+            self.num_epochs = num_epochs
+            self.value_loss_coef = value_loss_coef
+            self.device = device
+            self.action_scale = action_scale
+            self.transition = Storage.Transition()
+            self.MseLoss = nn.MSELoss()
+            # create the normalizer
+            self.optimizer = optim.Adam(self.actor_critic.parameters(), lr=lr)
+            self.writer = SummaryWriter()
 
+    def update(self):
+        mean_actor_loss = 0
+        mean_value_loss = 0
+        mean_loss = 0
+        generator = self.storage.ppo_mini_batch_generator(self.num_batches, self.num_epochs, device=self.device)
+
+        for old_obs_batch, old_actions_batch, old_target_values_batch, old_advantages_batch, old_log_probs_batch, old_rewards_batch in generator:
+            self.actor_critic.act(old_obs_batch)
+            actions_log_prob_batch = self.actor_critic.get_actions_log_prob(old_actions_batch)
+
+            ratios = torch.exp(actions_log_prob_batch - old_log_probs_batch.detach())
+            surr1 = ratios * old_advantages_batch
+            surr2 = torch.clamp(ratios, 1-self.eps_clip, 1+self.eps_clip) * old_advantages_batch
+
+            # final loss of clipped objective PPO
+            actor_loss = -torch.min(surr1, surr2).mean()
+            critic_loss = (self.MseLoss(old_target_values_batch, old_rewards_batch)).mean()
+            #actor_loss = (-old_advantages_batch * actions_log_prob_batch).mean()
+            #critic_loss = old_advantages_batch.pow(2).mean()
+            loss = actor_loss + self.value_loss_coef * critic_loss
+
+            # Gradient step
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+
+            mean_value_loss += critic_loss.item()
+            mean_actor_loss += actor_loss.item()
+            mean_loss += loss.item()
+        num_updates = self.num_epochs * self.num_batches
+        mean_value_loss /= num_updates
+        mean_actor_loss /= num_updates
+        mean_loss /= num_updates
+
+        self.storage.clear()
+
+        return mean_value_loss, mean_actor_loss
+    
