@@ -17,7 +17,7 @@ def test():
     storage = Storage(obs_dim=go_env.obs_dim, action_dim=go_env.action_dim, max_timesteps=1000)
     rl_agent = PPO(env=go_env, actor_critic=actor_critic, storage=storage, device=device)
 
-    rl_agent.load_model('/home/markus/Documents/Uni/RobotLearning/RL_Project/checkpoints/continued_00-11-36-30500-2024-01-04/13-01-47/15 500.pt')
+    rl_agent.load_model('/home/markus/Documents/Uni/RobotLearning/Robot-Learning-RL-Task/checkpoints/continued_00-11-36-30500-2024-01-04/13-01-47/16000.pt')
     rl_agent.play(is_training=False)
 
 

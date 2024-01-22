@@ -84,8 +84,16 @@ class GOEnv(MujocoEnv):
         return is_healthy
 
     @property
+    def out_of_bounds(self):
+        position = self.data.qpos[:3]
+        if (abs(position[1]) > 0.5 or abs(position[2]) > 0.5):
+            return True
+        else:   
+            return False
+
+    @property
     def terminated(self):
-        terminated = (not self.is_healthy) and self._terminate_when_unhealthy
+        terminated = ((not self.is_healthy) or self.out_of_bounds) and self._terminate_when_unhealthy 
         return terminated
 
     def _get_obs(self):
@@ -123,31 +131,37 @@ class GOEnv(MujocoEnv):
     def _reward_orientation(self):
         target_orientation = np.array([0, 0, 0])
         orientation = self.base_rotation
-        return np.exp(-np.linalg.norm(target_orientation - orientation))
+
+        if (np.linalg.norm(target_orientation - orientation) > 0.4):
+            return -50
+        else:
+            return 0
 
     def _reward_closer(self, before_pos, after_pos):
-        target_position = np.array([10, 0, 0])
-        distance_before = np.linalg.norm(target_position - before_pos)
-        distance_after = np.linalg.norm(target_position - after_pos)
-        if np.abs(distance_after - distance_before) < 0.01:
+        x_before = before_pos[0]
+        x_after = after_pos[0]
+        if np.abs(x_after - x_before) < 0.01:
             return 0
-        if distance_after < distance_before:
-            return 20
+        if x_after > x_before:
+            return 50
         else:
             return -10
         
     def _reward_side_bounds(self):
-        position = self.data.qpos[:3]
-        if (abs(position[1]) > 0.5 or abs(position[2]) > 0.5):
+        if self.out_of_bounds:
             return -100
-        else:   
+        else:
             return 1
+
     
     def _reward_alive(self):
         return 1
     
     def _reward_delta_q(self, delta_q):
-        return -np.linalg.norm(delta_q)
+        stiffness = 0.5
+        damping = 0.5
+        torque = stiffness * delta_q - damping * self.data.qvel[6:]
+        return -np.linalg.norm(torque)
 
 
     def step(self, delta_q):
@@ -170,7 +184,8 @@ class GOEnv(MujocoEnv):
 
         #total_rewards = orientation_reward + position_reward + 4.0*healthy_reward + 2.0*lin_v_track_reward + closer_reward
         #total_rewards =  4.0*healthy_reward + closer_reward + 2*alive_reward + 0.1*orientation_reward
-        total_rewards = 50*healthy_reward + goal_reward + delta_q_reward + closer_reward + side_bounds_reward
+        total_rewards = 50*healthy_reward  + delta_q_reward + closer_reward + side_bounds_reward + orientation_reward
+        #total_rewards = 50*healthy_reward + 10*delta_q_reward + closer_reward + side_bounds_reward + orientation_reward
 
         terminate = self.terminated
         observation = self._get_obs()

@@ -34,6 +34,8 @@ class RLAgent(nn.Module):
         # create the normalizer
         self.optimizer = optim.Adam(self.actor_critic.parameters(), lr=lr)
         self.writer = SummaryWriter()
+        self.total_reward_counter = 1
+        self.mean_total_reward = 0
 
     def act(self, obs):
         # Compute the actions and values
@@ -93,6 +95,7 @@ class RLAgent(nn.Module):
     def play(self, is_training=True, early_termination=True):
         obs, _ = self.env.reset()
         infos = []
+        total_reward = 0
         for _ in range(self.storage.max_timesteps):
             obs_tensor = torch.from_numpy(obs).to(self.device).float().unsqueeze(dim=0)
             with torch.no_grad():
@@ -102,10 +105,15 @@ class RLAgent(nn.Module):
                     action = self.inference(obs_tensor)
             obs_next, reward, terminate, info = self.env.step(action*self.action_scale)
             infos.append(info)
+            total_reward += reward
             if is_training:
                 self.store_data(obs, reward, terminate)
             if terminate and early_termination:
                 obs, _ = self.env.reset()
+                #print("Total reward: ", total_reward)
+                self.total_reward_counter += 1
+                self.mean_total_reward += total_reward
+                total_reward = 0
             else:
                 obs = obs_next
         if is_training:
@@ -116,12 +124,16 @@ class RLAgent(nn.Module):
     def learn(self, save_dir, num_learning_iterations=1000, num_steps_per_val=50):
         for it in range(num_learning_iterations):
             # play games to collect data
+            self.total_reward_counter = 1
             infos = self.play(is_training=True)
             # improve policy with collected data
             mean_value_loss, mean_actor_loss = self.update()
             print(f'Iteration {it}: mean value loss = {mean_value_loss}, mean actor loss = {mean_actor_loss}')
+            print("Mean total reward: ", self.mean_total_reward/self.total_reward_counter)
             self.writer.add_scalar('Loss/mean_value_loss', mean_value_loss, it)
             self.writer.add_scalar('Loss/mean_actor_loss', mean_actor_loss, it)
+            self.writer.add_scalar('Reward/mean_total_reward', self.mean_total_reward/self.total_reward_counter, it)
+            self.mean_total_reward = 0
             if it % num_steps_per_val == 0:
                 infos = self.play(is_training=False)
                 self.save_model(os.path.join(save_dir, f'{it}.pt'))
