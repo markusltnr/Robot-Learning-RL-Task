@@ -18,7 +18,10 @@ class RLAgent(nn.Module):
                  num_epochs=1,
                  device='cpu',
                  action_scale=0.3,
-                 eps_clip=0.2
+                 eps_clip=0.2,
+                 entropy_coef = 0.01,
+                 train=True,
+                 exp_name=None
                  ):
         super().__init__()
         self.env = env
@@ -33,9 +36,12 @@ class RLAgent(nn.Module):
         self.eps_clip = eps_clip
         # create the normalizer
         self.optimizer = optim.Adam(self.actor_critic.parameters(), lr=lr)
-        self.writer = SummaryWriter()
+        if train:
+            self.writer = SummaryWriter("runs/"+exp_name)
         self.total_reward_counter = 1
         self.mean_total_reward = 0
+        self.train = train
+        self.entropy_coef = entropy_coef
 
     def act(self, obs):
         # Compute the actions and values
@@ -71,7 +77,7 @@ class RLAgent(nn.Module):
             self.actor_critic.act(obs_batch)
             actions_log_prob_batch = self.actor_critic.get_actions_log_prob(actions_batch)
 
-            actor_loss = (-advantages_batch * actions_log_prob_batch).mean()
+            actor_loss = (-advantages_batch * actions_log_prob_batch - self.entropy_coef*self.actor_critic.entropy()).mean()
             critic_loss = advantages_batch.pow(2).mean()
             loss = actor_loss + self.value_loss_coef * critic_loss
 
@@ -155,9 +161,12 @@ class PPO(RLAgent):
                     num_batches=1,
                     num_epochs=1,
                     device='cpu',
-                    action_scale=0.3
+                    action_scale=0.3,
+                    entropy_coef = 0.01,
+                    train=True,
+                    exp_name=""
                     ):
-            super().__init__(env, storage, actor_critic, lr, value_loss_coef, num_batches, num_epochs, device, action_scale)
+            super().__init__(env, storage, actor_critic, lr, value_loss_coef, num_batches, num_epochs, device, action_scale, entropy_coef=entropy_coef, train=train, exp_name=exp_name)
             self.env = env
             self.storage = storage
             self.actor_critic = actor_critic
@@ -170,7 +179,6 @@ class PPO(RLAgent):
             self.MseLoss = nn.MSELoss()
             # create the normalizer
             self.optimizer = optim.Adam(self.actor_critic.parameters(), lr=lr)
-            self.writer = SummaryWriter()
 
     def update(self):
         mean_actor_loss = 0

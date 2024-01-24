@@ -20,6 +20,16 @@ class GOEnv(MujocoEnv):
                  terminate_when_unhealthy=True,
                  exclude_current_positions_from_observation=False,
                  frame_skip=40,
+                 stiffness= 1.5,
+                 damping= 3.5,
+                 min_z= 0.25,
+                 scene='go/scene.xml',
+                 reward_healthy= 50,
+                 reward_delta_q= 0,
+                 reward_closer= 1,
+                 reward_side_bounds= 1,
+                 reward_orientation= 1,
+                 torque= True,
                  **kwargs,
                  ):
         if exclude_current_positions_from_observation:
@@ -31,7 +41,7 @@ class GOEnv(MujocoEnv):
             low=-np.inf, high=np.inf, shape=(self.obs_dim,), dtype=np.float64
         )
         MujocoEnv.__init__(self,
-                           model_path=os.path.join(os.path.dirname(__file__), 'go/scene.xml'),
+                           model_path=os.path.join(os.path.dirname(__file__), scene),
                            frame_skip=frame_skip,
                            observation_space=observation_space,
                            **kwargs
@@ -45,6 +55,16 @@ class GOEnv(MujocoEnv):
         self._healthy_z_range = healthy_z_range
         self._terminate_when_unhealthy = terminate_when_unhealthy
         self._exclude_current_positions_from_observation = exclude_current_positions_from_observation
+
+        self.stiffness = stiffness
+        self.damping = damping
+        self.min_z = min_z
+        self.rh = reward_healthy
+        self.rd = reward_delta_q
+        self.rc = reward_closer
+        self.rs = reward_side_bounds
+        self.ro = reward_orientation
+        self.torque = torque
 
     @property
     def lower_limits(self):
@@ -158,18 +178,19 @@ class GOEnv(MujocoEnv):
         return 1
     
     def _reward_delta_q(self, delta_q):
-        stiffness = 0.5
-        damping = 0.5
-        torque = stiffness * delta_q - damping * self.data.qvel[6:]
-        return -np.linalg.norm(torque)
+        torque = self.stiffness * np.linalg.norm(delta_q) + self.damping * np.linalg.norm(self.data.qvel[6:])
+        return -torque
 
 
     def step(self, delta_q):
         action = delta_q + self.data.qpos[-12:]
         action = np.clip(action, a_min=self.lower_limits, a_max=self.upper_limits)
-
         before_pos = self.data.qpos[:3].copy()
-        self.do_simulation(action, self.frame_skip)
+        torque = self.stiffness * delta_q + self.damping * self.data.qvel[6:]
+        if self.torque:
+            self.do_simulation(torque, self.frame_skip)
+        else:
+            self.do_simulation(action, self.frame_skip)
         after_pos = self.data.qpos[:3].copy()
 
         lin_v_track_reward = self._reward_lin_vel(before_pos, after_pos)
@@ -184,7 +205,8 @@ class GOEnv(MujocoEnv):
 
         #total_rewards = orientation_reward + position_reward + 4.0*healthy_reward + 2.0*lin_v_track_reward + closer_reward
         #total_rewards =  4.0*healthy_reward + closer_reward + 2*alive_reward + 0.1*orientation_reward
-        total_rewards = 50*healthy_reward  + delta_q_reward + closer_reward + side_bounds_reward + orientation_reward
+        total_rewards = self.rh*healthy_reward  + self.rd*delta_q_reward \
+            + self.rc*closer_reward + self.rs*side_bounds_reward + self.ro*orientation_reward
         #total_rewards = 50*healthy_reward + 10*delta_q_reward + closer_reward + side_bounds_reward + orientation_reward
 
         terminate = self.terminated

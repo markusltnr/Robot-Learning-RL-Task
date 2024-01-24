@@ -1,0 +1,24 @@
+agent:
+  lr: 0.00025 
+  action_scale: 0.3 
+  num_batches: 1
+  num_epochs: 1
+  entropy_coef: 0
+learn:
+  num_learning_iterations: 50001
+  num_steps_per_val: 250
+storage:  
+  max_timesteps: 1024 
+  gamma: 0.98
+env:
+  render_mode: 'rgb-array'
+  stiffness: 1
+  damping: 0
+  healthy_z_range: [0.15, 0.5]
+  scene: 'go/scene.xml'
+  reward_healthy: 50
+  reward_delta_q: 0
+  reward_closer: 1
+  reward_side_bounds: 1
+  reward_orientation: 1
+  torque: False

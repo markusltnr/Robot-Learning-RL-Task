@@ -1,0 +1,69 @@
+<mujoco model="go1 scene">
+
+  <include file="go1.xml"/>
+
+  <statistic center="0 0 0.1" extent="0.8"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global azimuth="120" elevation="-20"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072"/>
+    <texture type="2d" name="groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3"
+      markrgb="0.8 0.8 0.8" width="300" height="300"/>
+    <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5" reflectance="0.2"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
+    
+    <!-- Original flat floor -->
+    <geom name="floor" size="0 0 0.05" quat="0 0 0 1" type="plane"  material="groundplane"/>
+    
+    <!-- Uneven surfaces -->
+    <geom name="uneven1" size="0.2 0.2 0.01" pos="-0.1 0.1 0.02" type="box" material="groundplane"/>
+    <geom name="uneven2" size="0.15 0.15 0.02" pos="-0.15 -0.1 0.03" type="box" material="groundplane"/>
+    <geom name="uneven3" size="0.18 0.18 0.015" pos="0.2 -0.2 0.023" type="box" material="groundplane"/>
+    <geom name="uneven4" size="0.25 0.12 0.027" pos="0.3 0.05 0.04" type="box" material="groundplane"/>
+    <geom name="uneven5" size="0.1 0.1 0.023" pos="0.4 -0.15 0.035" type="box" material="groundplane"/>
+    <geom name="uneven6" size="0.2 0.2 0.01" pos="0.5 0.1 0.02" type="box" material="groundplane"/>
+    <geom name="uneven7" size="0.15 0.15 0.02" pos="0.6 -0.1 0.03" type="box" material="groundplane"/>
+    <geom name="uneven8" size="0.18 0.18 0.015" pos="0.7 -0.2 0.023" type="box" material="groundplane"/>
+    <geom name="uneven9" size="0.25 0.12 0.03" pos="0.8 0.05 0.04" type="box" material="groundplane"/>
+    <geom name="uneven10" size="0.1 0.1 0.022" pos="0.9 -0.15 0.035" type="box" material="groundplane"/>
+    <geom name="uneven11" size="0.2 0.2 0.01" pos="1.0 0.1 0.02" type="box" material="groundplane"/>
+    <geom name="uneven12" size="0.15 0.15 0.02" pos="1.1 -0.1 0.03" type="box" material="groundplane"/>
+    <geom name="uneven13" size="0.18 0.18 0.015" pos="1.2 -0.2 0.023" type="box" material="groundplane"/>
+    <geom name="uneven14" size="0.25 0.12 0.027" pos="1.3 0.05 0.04" type="box" material="groundplane"/>
+    <geom name="uneven15" size="0.1 0.1 0.023" pos="1.4 -0.15 0.035" type="box" material="groundplane"/>
+    <geom name="uneven16" size="0.2 0.2 0.01" pos="1.5 0.1 0.02" type="box" material="groundplane"/>
+    <geom name="uneven17" size="0.15 0.15 0.02" pos="1.6 -0.1 0.03" type="box" material="groundplane"/>
+    <geom name="uneven18" size="0.18 0.18 0.015" pos="1.7 -0.2 0.023" type="box" material="groundplane"/>
+    <geom name="uneven19" size="0.25 0.12 0.03" pos="1.8 0.05 0.04" type="box" material="groundplane"/>
+    <geom name="uneven20" size="0.1 0.1 0.022" pos="1.9 -0.15 0.035" type="box" material="groundplane"/>
+    <geom name="uneven21" size="0.2 0.2 0.01" pos="2.0 0.1 0.02" type="box" material="groundplane"/>
+    <geom name="uneven22" size="0.15 0.15 0.02" pos="2.1 -0.1 0.03" type="box" material="groundplane"/>
+    <geom name="uneven23" size="0.18 0.18 0.015" pos="2.2 -0.2 0.023" type="box" material="groundplane"/>
+    <geom name="uneven24" size="0.25 0.12 0.027" pos="2.3 0.05 0.04" type="box" material="groundplane"/>
+    <geom name="uneven25" size="0.1 0.1 0.023" pos="2.4 -0.15 0.035" type="box" material="groundplane"/>
+    <geom name="uneven26" size="0.2 0.2 0.01" pos="2.5 0.1 0.02" type="box" material="groundplane"/>
+    <geom name="uneven27" size="0.15 0.15 0.02" pos="2.6 -0.1 0.03" type="box" material="groundplane"/>
+    <geom name="uneven28" size="0.18 0.18 0.015" pos="2.7 -0.2 0.023" type="box" material="groundplane"/>
+    <geom name="uneven29" size="0.25 0.12 0.03" pos="2.8 0.05 0.04" type="box" material="groundplane"/>
+    <geom name="uneven30" size="0.1 0.1 0.022" pos="2.9 -0.15 0.035" type="box" material="groundplane"/>
+    <geom name="uneven31" size="0.2 0.2 0.01" pos="3.0 0.1 0.02" type="box" material="groundplane"/>
+    <geom name="uneven32" size="0.15 0.15 0.02" pos="3.1 -0.1 0.03" type="box" material="groundplane"/>
+    <geom name="uneven33" size="0.18 0.18 0.015" pos="3.2 -0.2 0.023" type="box" material="groundplane"/>
+    <geom name="uneven34" size="0.25 0.12 0.027" pos="3.3 0.05 0.04" type="box" material="groundplane"/>
+    <geom name="uneven35" size="0.1 0.1 0.023" pos="3.4 -0.15 0.035" type="box" material="groundplane"/>
+    <geom name="uneven36" size="0.2 0.2 0.01" pos="3.5 0.1 0.02" type="box" material="groundplane"/>
+    <geom name="uneven37" size="0.15 0.15 0.02" pos="3.6 -0.1 0.03" type="box" material="groundplane"/>
+    <geom name="uneven38" size="0.18 0.18 0.015" pos="3.7 -0.2 0.023" type="box" material="groundplane"/>
+    <geom name="uneven39" size="0.25 0.12 0.03" pos="3.8 0.05 0.04" type="box" material="groundplane"/>
+    <geom name="uneven40" size="0.1 0.1 0.022" pos="3.9 -0.15 0.035" type="box" material="groundplane"/>
+  </worldbody>
+
+</mujoco>
